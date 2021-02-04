@@ -35,7 +35,7 @@ def generate_launch_description():
     rrbot_forward_controller = os.path.join(
         get_package_share_directory('ros2_control_demo_robot'),
         'controllers',
-        'rrbot_forward_controller_position.yaml'
+        'rrbot_forward_controllers.yaml'
         )
 
     return LaunchDescription([

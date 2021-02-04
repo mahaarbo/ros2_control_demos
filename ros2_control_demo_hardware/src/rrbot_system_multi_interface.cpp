@@ -28,6 +28,7 @@ return_type RRBotSystemMultiInterfaceHardware::configure(
   hw_commands_positions_.resize(info_.joints.size(), std::numeric_limits<double>::quiet_NaN());
   hw_commands_velocities_.resize(info_.joints.size(), std::numeric_limits<double>::quiet_NaN());
   hw_commands_accelerations_.resize(info_.joints.size(), std::numeric_limits<double>::quiet_NaN());
+  control_lvl_.resize(info_.joints.size(), integration_lvl_t::POSITION);
 
   for (const hardware_interface::ComponentInfo & joint : info_.joints) {
     // RRBotSystemMultiInterface has exactly 3 state interfaces and 3 command interfaces on each joint
@@ -147,12 +148,13 @@ return_type RRBotSystemMultiInterfaceHardware::start()
     if (std::isnan(hw_commands_accelerations_[i])) {
       hw_commands_accelerations_[i] = 0;
     }
+    control_lvl_[i] = integration_lvl_t::POSITION;
   }
   status_ = hardware_interface::status::STARTED;
 
   RCLCPP_INFO(
     rclcpp::get_logger("RRBotSystemMultiInterfaceHardware"),
-    "System succesfully started!");
+    "System succesfully started! %u", control_lvl_[0]);
   return return_type::OK;
 }
 
@@ -182,49 +184,89 @@ return_type RRBotSystemMultiInterfaceHardware::stop()
 
 return_type RRBotSystemMultiInterfaceHardware::read()
 {
-  RCLCPP_INFO(
+  /*RCLCPP_INFO(
     rclcpp::get_logger("RRBotSystemMultiInterfaceHardware"),
     "Reading...");
-  
+  */
   for (uint  i = 0; i < hw_positions_.size(); i++) {
-    // Simulate RRBot's movement, this has three scenarios actually:
-    // 1. The position command interfaces have been claimed, update according to them
-    // 2. The velocity command interfaces have been claimed, update according to them
-    // 3. The acceleration command interfaces have been claimed, update according to them
-    // Since I don't know how to figure out which resource has been claimed:
-    hw_positions_[i] = hw_commands_positions_[i] + (hw_positions_[i] - hw_commands_positions_[i]) / hw_slowdown_;
+    switch(control_lvl_[i]) {
+      case integration_lvl_t::POSITION:
+        hw_accelerations_[i] = 0;
+        hw_velocities_[i] = 0;
+        hw_positions_[i] = hw_commands_positions_[i];
+        break;
+      case integration_lvl_t::VELOCITY:
+        hw_accelerations_[i] = 0;
+        hw_velocities_[i] = hw_commands_velocities_[i];
+        break;
+      case integration_lvl_t::ACCELERATION:
+        hw_accelerations_[i] = hw_commands_accelerations_[i];
+        break; 
+    }
+    // Using the hw_slowdown_ parameter as a timestep
+    hw_velocities_[i] += hw_slowdown_*hw_accelerations_[i];
+    hw_positions_[i] += hw_slowdown_*hw_velocities_[i];
     RCLCPP_INFO(
       rclcpp::get_logger("RRBotSystemMultiInterfaceHardware"),
       "Got pos: %.5f, vel: %.5f, acc: %.5f for joint %d!",
       hw_positions_[i], hw_velocities_[i],
       hw_accelerations_[i], i);
   }
-  RCLCPP_INFO(
+  /*RCLCPP_INFO(
     rclcpp::get_logger("RRBotSystemMultiInterfaceHardware"),
     "Joints succesfully read!");
-
+  */
   return return_type::OK;
 }
 
 return_type RRBotSystemMultiInterfaceHardware::write()
 {
-  RCLCPP_INFO(
+  /*RCLCPP_INFO(
     rclcpp::get_logger("RRBotSystemMultiInterfaceHardware"),
-    "Writing...");
+    "Writing...");*/
   for (uint i = 0; i < hw_commands_positions_.size(); i++) {
     // Simulate sending commands to the hardware
     RCLCPP_INFO(
       rclcpp::get_logger("RRBotSystemMultiInterfaceHardware"),
-      "Got the commands pos: %.5f, vel: %.5f, acc: %.5f for joint %d", 
+      "Got the commands pos: %.5f, vel: %.5f, acc: %.5f for joint %d, control_lvl: %d", 
       hw_commands_positions_[i], hw_commands_velocities_[i],
-      hw_commands_accelerations_[i], i);
+      hw_commands_accelerations_[i], i, control_lvl_[i]);
   }
-  RCLCPP_INFO(
+  /*RCLCPP_INFO(
     rclcpp::get_logger("RRBotSystemMultiInterfaceHardware"),
-    "Joint succesfully written!");
+    "Joint succesfully written!");*/
   return return_type::OK;
 }
 
+return_type RRBotSystemMultiInterfaceHardware::accept_command_resource_claim(const std::string & key)
+{
+  RCLCPP_INFO(
+    rclcpp::get_logger("RRBotSystemMultiInterfaceHardware"),
+    std::string("got key:") + key);
+  for (uint i = 0; i < info_.joints.size(); i++) {
+    if (key == info_.joints[i].name + "/" + hardware_interface::HW_IF_POSITION) {
+      control_lvl_[i] = integration_lvl_t::POSITION;
+      return return_type::OK;
+    } else if (key == info_.joints[i].name + "/" + hardware_interface::HW_IF_VELOCITY) {
+      control_lvl_[i] = integration_lvl_t::VELOCITY;
+      return return_type::OK;
+    } else if (key == info_.joints[i].name + "/" + hardware_interface::HW_IF_ACCELERATION) {
+      control_lvl_[i] = integration_lvl_t::ACCELERATION;
+      return return_type::OK;
+    } 
+  }
+  RCLCPP_INFO(
+    rclcpp::get_logger("RRBotSystemMultiInterfaceHardware"),
+    "Unknown command resource claim. Got: %s", key);
+  return return_type::ERROR;
+  
+}
+
+return_type RRBotSystemMultiInterfaceHardware::accept_state_resource_claim(const std::string & key)
+{
+  (void)key;
+  return return_type::OK;
+}
 }  // namespace ros2_control_demo_hardware
 
 #include "pluginlib/class_list_macros.hpp"

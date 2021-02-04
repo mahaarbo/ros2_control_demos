@@ -197,7 +197,17 @@ hardware_interface::return_type ros2_control_demo_hardware::RRBotSystemPositionO
 
   return return_type::OK;
 }
+return_type RRBotSystemPositionOnlyHardware::accept_state_resource_claim(const std::string & key)
+{
+  (void)key;
+  return return_type::OK;
+}
 
+return_type RRBotSystemPositionOnlyHardware::accept_command_resource_claim(const std::string & key)
+{
+  (void)key;
+  return return_type::OK;
+}
 }  // namespace ros2_control_demo_hardware
 
 #include "pluginlib/class_list_macros.hpp"

@@ -4,6 +4,7 @@
 #include <memory>
 #include <string>
 #include <vector>
+#include <cstdint>
 
 #include "rclcpp/macros.hpp"
 
@@ -46,6 +47,23 @@ public:
   ROS2_CONTROL_DEMO_HARDWARE_PUBLIC
   return_type write() override;
 
+  /**
+   * Check and change behavior depending on the command interface
+   * that will be claimed. Under position control we set the
+   * position directly, and under velocity, or acceleration we
+   * integrate once or twice respectively.
+   * 
+   * \param key string identifying interface to be checked
+   * \return return_type::OK if the resource can be claimed or 
+   * return_type::ERROR if the hardware_interface is unable to 
+   * accept the change.
+   */
+  ROS2_CONTROL_DEMO_HARDWARE_PUBLIC
+  return_type accept_command_resource_claim(const std::string & key) override;
+
+  ROS2_CONTROL_DEMO_HARDWARE_PUBLIC
+  return_type accept_state_resource_claim(const std::string & key) override;
+
 private:
   // Parameters for the RRBot simulation
   double hw_start_sec_;
@@ -59,6 +77,18 @@ private:
   std::vector<double> hw_positions_;
   std::vector<double> hw_velocities_;
   std::vector<double> hw_accelerations_;
+
+  // Enum defining at which control level we are
+  // Dumb way of maintaining the command_interface type per joint.
+  enum class integration_lvl_t : std::uint8_t
+  {
+    POSITION = 0,
+    VELOCITY = 1,
+    ACCELERATION = 2
+  };
+
+  std::vector<integration_lvl_t> control_lvl_;
+
 };
 
 }  // namespace ros2_control_demo_hardware
