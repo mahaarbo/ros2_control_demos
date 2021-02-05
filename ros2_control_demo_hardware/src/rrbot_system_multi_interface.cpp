@@ -238,34 +238,23 @@ return_type RRBotSystemMultiInterfaceHardware::write()
   return return_type::OK;
 }
 
-return_type RRBotSystemMultiInterfaceHardware::accept_command_resource_claim(const std::string & key)
+return_type RRBotSystemMultiInterfaceHardware::accept_command_resource_claim(const std::vector<std::string> & interfaces)
 {
-  RCLCPP_INFO(
-    rclcpp::get_logger("RRBotSystemMultiInterfaceHardware"),
-    std::string("got key:") + key);
-  for (uint i = 0; i < info_.joints.size(); i++) {
-    if (key == info_.joints[i].name + "/" + hardware_interface::HW_IF_POSITION) {
-      control_lvl_[i] = integration_lvl_t::POSITION;
-      return return_type::OK;
-    } else if (key == info_.joints[i].name + "/" + hardware_interface::HW_IF_VELOCITY) {
-      control_lvl_[i] = integration_lvl_t::VELOCITY;
-      return return_type::OK;
-    } else if (key == info_.joints[i].name + "/" + hardware_interface::HW_IF_ACCELERATION) {
-      control_lvl_[i] = integration_lvl_t::ACCELERATION;
-      return return_type::OK;
-    } 
+  for (auto & key : interfaces) {
+    for (uint i = 0; i < info_.joints.size(); i++) {
+      if (key == info_.joints[i].name + "/" + hardware_interface::HW_IF_POSITION) {
+        control_lvl_[i] = integration_lvl_t::POSITION;
+        return return_type::OK;
+      } else if (key == info_.joints[i].name + "/" + hardware_interface::HW_IF_VELOCITY) {
+        control_lvl_[i] = integration_lvl_t::VELOCITY;
+        return return_type::OK;
+      } else if (key == info_.joints[i].name + "/" + hardware_interface::HW_IF_ACCELERATION) {
+        control_lvl_[i] = integration_lvl_t::ACCELERATION;
+        return return_type::OK;
+      } 
+    }
   }
-  RCLCPP_INFO(
-    rclcpp::get_logger("RRBotSystemMultiInterfaceHardware"),
-    "Unknown command resource claim. Got: %s", key);
   return return_type::ERROR;
-  
-}
-
-return_type RRBotSystemMultiInterfaceHardware::accept_state_resource_claim(const std::string & key)
-{
-  (void)key;
-  return return_type::OK;
 }
 }  // namespace ros2_control_demo_hardware
 

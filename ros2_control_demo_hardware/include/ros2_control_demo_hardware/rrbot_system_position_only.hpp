@@ -62,10 +62,7 @@ public:
   return_type write() override;
 
   ROS2_CONTROL_DEMO_HARDWARE_PUBLIC
-  return_type accept_state_resource_claim(const std::string & key) override;
-
-  ROS2_CONTROL_DEMO_HARDWARE_PUBLIC
-  return_type accept_command_resource_claim(const std::string & key) override;
+  return_type accept_command_resource_claim(const std::vector<std::string> & interfaces) override;
 
 private:
   // Parameters for the RRBot simulation
